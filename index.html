@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>글로우 워십 연말 모임</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: 한 장짜리 콘티(큐시트) — 시간 막대 → 순서별 큐 → 조 편성표 */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --ink:#1d2a2a; --muted:#5d6b69; --line:#d9dfdb;
+  --pine:#2f5d50; --pine-soft:#e3ece7; --gold:#b8862f; --pending:#2f63b8;
+  --seg1:#c9dccf; --seg2:#8fb3a2; --seg3:#2f5d50; --seg4:#b8862f;
+  --display:"Gowun Batang", "Noto Serif KR", serif;
+  --body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131a19; --surface:#1a2322; --ink:#e7ece9; --muted:#9aa9a5; --line:#2c3836;
+  --pine:#7fbfa8; --pine-soft:#20302c; --gold:#d9ab57; --pending:#7fa8ec;
+  --seg1:#35504a; --seg2:#4e7b6c; --seg3:#7fbfa8; --seg4:#d9ab57; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131a19; --surface:#1a2322; --ink:#e7ece9; --muted:#9aa9a5; --line:#2c3836;
+  --pine:#7fbfa8; --pine-soft:#20302c; --gold:#d9ab57; --pending:#7fa8ec;
+  --seg1:#35504a; --seg2:#4e7b6c; --seg3:#7fbfa8; --seg4:#d9ab57; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.7;word-break:keep-all}
+.wrap{max-width:760px;margin:0 auto;padding-block:48px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;font-weight:700}
+h1{font-size:clamp(2rem,6vw,2.8rem);line-height:1.2}
+h2{font-size:1.45rem}
+h3{font-size:1.05rem;font-family:var(--body);font-weight:600}
+p{margin:0}
+.eyebrow{font-size:.78rem;letter-spacing:.12em;color:var(--pine);font-weight:600}
+header{display:flex;flex-direction:column;gap:12px}
+header .lead{color:var(--muted);max-width:34em}
+/* 시간 막대 */
+.bar{display:flex;flex-direction:column;gap:8px}
+.track{display:flex;height:44px;border-radius:6px;overflow:hidden;gap:2px}
+.track span{display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:600;color:var(--bg);text-align:center;line-height:1.15;overflow:hidden}
+.track span:first-child{background:var(--seg1);color:var(--ink)}
+.track span:nth-child(2){background:var(--seg2);color:var(--ink)}
+.track span:nth-child(3){background:var(--seg3)}
+.track span:nth-child(4){background:var(--seg4)}
+.ticks{position:relative;height:1.4em;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.ticks span:first-child{transform:none}
+.ticks span:last-child{transform:translateX(-100%)}
+/* 큐 */
+.cues{display:flex;flex-direction:column}
+.cue{display:grid;grid-template-columns:72px 1fr;gap:20px;padding-block:28px;border-top:1px solid var(--line)}
+.cue:last-child{border-bottom:1px solid var(--line)}
+.cue-no{display:flex;flex-direction:column;gap:2px}
+.cue-no b{font-family:var(--display);font-size:2rem;line-height:1;color:var(--pine)}
+.cue-no small{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.cue-body{display:flex;flex-direction:column;gap:14px;min-width:0}
+.cue-body>p{color:var(--muted)}
+ul.items{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.items li{padding-left:18px;position:relative}
+ul.items li::before{content:"";position:absolute;left:2px;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--pine)}
+ul.items b{font-weight:600}
+.q{display:flex;flex-wrap:wrap;gap:8px}
+.q span{background:var(--pine-soft);color:var(--ink);padding:6px 12px;border-radius:999px;font-size:.88rem}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:.9rem;display:flex;flex-direction:column;gap:6px}
+.note .label{font-size:.72rem;letter-spacing:.1em;color:var(--gold);font-weight:600}
+.note ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:4px}
+/* 조 편성 */
+section.groups{display:flex;flex-direction:column;gap:16px}
+.legend{font-size:.85rem;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+.legend .p{color:var(--pending)}
+.table{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;min-width:560px;font-size:.92rem}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-size:.75rem;letter-spacing:.08em;color:var(--muted);font-weight:600}
+td.no{font-family:var(--display);font-weight:700;font-size:1.05rem;color:var(--pine);white-space:nowrap}
+td.lead b{display:block;font-weight:600}
+td.lead small{color:var(--muted)}
+.pend{color:var(--pending)}
+td.cnt{white-space:nowrap;font-variant-numeric:tabular-nums}
+td.cnt small{display:block;color:var(--muted)}
+footer{font-size:.85rem;color:var(--muted);text-align:center}
+@media (max-width:520px){
+  .cue{grid-template-columns:1fr;gap:12px}
+  .cue-no{flex-direction:row;align-items:baseline;gap:10px}
+  .track span{font-size:.7rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">2026 글로우 워십 연말 모임</span>
+    <h1>한 해를 돌아보며, 함께</h1>
+    <p class="lead">싱어팀과 악기팀이 함께 모여 올해를 나누는 시간이에요. 아이스브레이크부터 소그룹 나눔, 마무리 찬양까지 총 70분 동안 진행해요.</p>
+  </header>
+
+  <div class="bar" aria-label="전체 진행 시간 70분">
+    <div class="track">
+      <span style="flex:10">아이스<wbr>브레이크</span>
+      <span style="flex:20">전체모임</span>
+      <span style="flex:30">조별모임</span>
+      <span style="flex:10">마무리</span>
+    </div>
+    <div class="ticks"><span style="left:0">0</span><span style="left:14.286%">10분</span><span style="left:42.857%">30분</span><span style="left:85.714%">60분</span><span style="left:100%">70분</span></div>
+  </div>
+
+  <section class="cues" aria-label="순서">
+    <article class="cue">
+      <div class="cue-no"><b>1</b><small>10분</small></div>
+      <div class="cue-body">
+        <h2>아이스브레이크</h2>
+        <p>찬양팀답게 음악 게임으로 분위기를 열어요.</p>
+        <ul class="items">
+          <li><b>먼저, 리듬게임</b>: 다 같이 리듬게임으로 가볍게 몸과 마음을 풀고 마음껏 웃어봐요.</li>
+          <li><b>이어서, 허밍 릴레이</b>: 찬양 제목을 받은 사람이 허밍만으로 팀원들이 맞히게 해요.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="cue">
+      <div class="cue-no"><b>2</b><small>20분</small></div>
+      <div class="cue-body">
+        <h2>전체모임</h2>
+        <p>20명이 20분이면 한 사람당 1분 남짓이에요. 시간을 지키기 위해 이렇게 진행해요.</p>
+        <ul class="items">
+          <li><b>번호 뽑기</b>: 병 돌리기나 번호 뽑기로 7~8명만 질문에 답해요.</li>
+          <li><b>한 문장 답하기</b>: 또는 모두 같은 질문에 한 문장씩 빠르게 답하고, 재밌는 답이 나오면 조금 더 들어요.</li>
+        </ul>
+        <div class="q" aria-label="질문">
+          <span>올해 고마웠던 팀원과 그 이유</span>
+          <span>때려치우고 싶던 순간</span>
+        </div>
+        <div class="note">
+          <span class="label">진행자 참고</span>
+          <p>“때려치우고 싶던 순간”은 리더가 먼저 가볍고 유쾌하게 답해서 분위기를 잡아 주세요.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="cue">
+      <div class="cue-no"><b>3</b><small>30분</small></div>
+      <div class="cue-body">
+        <h2>조별모임</h2>
+        <p>4~6명 소그룹으로 나눠 한 사람당 6~7분씩 깊이 나눠요. 싱어와 악기를 섞어 서로의 고충을 이해하는 시간이 되도록 조를 짰어요.</p>
+        <div class="q" aria-label="나눔 질문">
+          <span>요즘 내 마음 상태</span>
+          <span>어떤 마음으로 섬기고 있는지</span>
+          <span>내년에 내가 해보고 싶은 것</span>
+          <span>팀이 이랬으면 좋겠다</span>
+        </div>
+        <div class="note">
+          <span class="label">조 진행자 참고</span>
+          <ul>
+            <li>질문 순서와 시간을 챙겨 주세요.</li>
+            <li>바라는 점 중심으로 이야기하도록 이끌어 주세요. 다른 파트에 대한 불만처럼 들리지 않게요.</li>
+            <li>구체적인 개선 의견은 마지막에 익명 쪽지로 따로 받아요.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="cue">
+      <div class="cue-no"><b>4</b><small>10분</small></div>
+      <div class="cue-body">
+        <h2>마무리</h2>
+        <p>다시 한자리에 모여 여운을 남기며 마쳐요.</p>
+        <ul class="items">
+          <li>함께 찬양 한 곡 부르기</li>
+          <li>소그룹별로 서로를 위해 짧게 기도하기</li>
+          <li>올해 사진과 영상으로 만든 짧은 슬라이드 보기</li>
+          <li>내년에 기대하는 것을 한 문장씩 적어 모아 두기. 내년 연말에 다시 열어봐요.</li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <section class="groups">
+    <div>
+      <span class="eyebrow">조별모임</span>
+      <h2>조 편성</h2>
+    </div>
+    <div class="legend"><span>검정: 참석 확정</span><span class="p">파랑(*): 미응답</span></div>
+    <div class="table">
+      <table>
+        <thead><tr><th>조</th><th>진행자</th><th>멤버</th><th>인원</th></tr></thead>
+        <tbody>
+          <tr><td class="no">1조</td><td class="lead"><b>김에셀</b><small>싱어 팀장</small></td>
+            <td>권도윤(베이스), 김현규, 장윤희, <span class="pend">*고성민</span>, <span class="pend">*조은혜(세컨 건반)</span></td>
+            <td class="cnt">4명<small>최대 6명</small></td></tr>
+          <tr><td class="no">2조</td><td class="lead"><b>박하람</b><small>악기 팀장</small></td>
+            <td>최한길, 도재욱, 김진희, 임보미, <span class="pend">*신석화(베이스)</span></td>
+            <td class="cnt">5명<small>최대 6명</small></td></tr>
+          <tr><td class="no">3조</td><td class="lead"><b>서승범</b><small>인도자</small></td>
+            <td>김상미(바이올린), 정문도, 배윤미, 손수현, <span class="pend">*홍준기(베이스)</span></td>
+            <td class="cnt">5명<small>최대 6명</small></td></tr>
+          <tr><td class="no">4조</td><td class="lead"><b>최재성</b><small>인도자</small></td>
+            <td>김한준(일렉), 유지인(건반), 신정이, <span class="pend">*우새벽</span></td>
+            <td class="cnt">4명<small>최대 5명</small></td></tr>
+          <tr><td class="no">5조</td><td class="lead"><b>신창빈</b><small>인도자·드럼·베이스</small></td>
+            <td>심재현(고문), 유명혜(세컨 건반), 고은하, <span class="pend">*김수근(드럼·일렉)</span></td>
+            <td class="cnt">4명<small>최대 5명</small></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="legend">인원은 진행자를 포함한 참석 확정 인원이에요. 아직 응답하지 않은 분은 참석 여부를 알려 주세요.</p>
+  </section>
+
+  <footer>올 한 해 함께 섬겨 주셔서 고맙습니다.</footer>
+</div>
+</body>
+</html>
