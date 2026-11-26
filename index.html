@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>글로우 워십 연말 모임</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+/* Layout: 입장 카드(이름·팀·캐릭터) → 한 장짜리 콘티(시간 막대 → 순서 → 조 편성 → 입장한 팀원) */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --ink:#1d2a2a; --muted:#5d6b69; --line:#d9dfdb;
+  --pine:#2f5d50; --pine-soft:#e3ece7; --gold:#b8862f; --pending:#2f63b8; --danger:#b3392f;
+  --singer:#b04a6c; --singer-soft:#f7e3ea; --band:#2f63b8; --band-soft:#e1eaf8;
+  --seg1:#c9dccf; --seg2:#8fb3a2; --seg3:#2f5d50; --seg4:#b8862f;
+  --display:"Gowun Batang", "Noto Serif KR", serif;
+  --body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131a19; --surface:#1a2322; --ink:#e7ece9; --muted:#9aa9a5; --line:#2c3836;
+  --pine:#7fbfa8; --pine-soft:#20302c; --gold:#d9ab57; --pending:#7fa8ec; --danger:#f08a80;
+  --singer:#ec8fb0; --singer-soft:#3a2430; --band:#7fa8ec; --band-soft:#1f2b40;
+  --seg1:#35504a; --seg2:#4e7b6c; --seg3:#7fbfa8; --seg4:#d9ab57; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131a19; --surface:#1a2322; --ink:#e7ece9; --muted:#9aa9a5; --line:#2c3836;
+  --pine:#7fbfa8; --pine-soft:#20302c; --gold:#d9ab57; --pending:#7fa8ec; --danger:#f08a80;
+  --singer:#ec8fb0; --singer-soft:#3a2430; --band:#7fa8ec; --band-soft:#1f2b40;
+  --seg1:#35504a; --seg2:#4e7b6c; --seg3:#7fbfa8; --seg4:#d9ab57; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.7;word-break:keep-all}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;font-weight:700}
+h1{font-size:clamp(2rem,6vw,2.8rem);line-height:1.2}
+h2{font-size:1.45rem}
+p{margin:0}
+.eyebrow{font-size:.78rem;letter-spacing:.12em;color:var(--pine);font-weight:600}
+.avatar{display:block;width:100%;height:auto;border-radius:50%}
+
+/* ---------- 입장 화면 ---------- */
+.login{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding-block:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login-card{width:100%;max-width:540px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px clamp(18px,5vw,32px);display:flex;flex-direction:column;gap:26px}
+.login-head{display:flex;flex-direction:column;gap:6px}
+.login-head h1{font-size:clamp(1.7rem,5vw,2.2rem)}
+.login-head p{color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:10px}
+.field-label{font-weight:600;font-size:.95rem}
+.field-label small{font-weight:400;color:var(--muted);margin-left:6px}
+input[type=text]{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+input[type=text]:focus{border-color:var(--pine);outline:none;box-shadow:0 0 0 3px var(--pine-soft)}
+.team-pick{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team-btn{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);text-align:left}
+.team-btn svg{width:34px;height:34px;flex:none}
+.team-btn b{display:block;font-weight:600}
+.team-btn small{color:var(--muted);font-size:.8rem}
+.team-btn[data-team="싱어팀"]{color:var(--ink)}
+.team-btn[data-team="싱어팀"] svg{color:var(--singer)}
+.team-btn[data-team="악기팀"] svg{color:var(--band)}
+.team-btn[data-team="싱어팀"][aria-pressed="true"]{border-color:var(--singer);background:var(--singer-soft)}
+.team-btn[data-team="악기팀"][aria-pressed="true"]{border-color:var(--band);background:var(--band-soft)}
+.maker{display:grid;grid-template-columns:120px 1fr;gap:20px;align-items:start}
+.preview{width:120px;position:sticky;top:12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.preview button{font-size:.8rem;background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:var(--muted)}
+.maker-opts{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sub{font-size:.8rem;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.opt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.opt{padding:4px;border:2px solid transparent;border-radius:14px;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.72rem;color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--pine);background:var(--pine-soft);color:var(--ink)}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatch{width:34px;height:34px;border-radius:50%;border:2px solid var(--line)}
+.swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 3px var(--bg) inset}
+.submit{padding:14px;border:0;border-radius:12px;background:var(--pine);color:var(--bg);font-weight:600;font-size:1rem}
+.submit:disabled{opacity:.6;cursor:progress}
+.error{color:var(--danger);font-size:.9rem;min-height:1.4em}
+.demo{font-size:.8rem;color:var(--muted);background:var(--pine-soft);border-radius:8px;padding:8px 12px}
+
+/* ---------- 안내 페이지 ---------- */
+.wrap{max-width:760px;margin:0 auto;padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:48px}
+.me{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.me-ava{width:52px;flex:none}
+.me-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.45}
+.me-text b{font-weight:600}
+.me-text span{font-size:.88rem;color:var(--muted)}
+.chip{display:inline-block;font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:2px}
+.chip.s{background:var(--singer-soft);color:var(--singer)}
+.chip.b{background:var(--band-soft);color:var(--band)}
+.me-actions{display:flex;gap:8px}
+.ghost{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.82rem;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px}
+header .lead{color:var(--muted);max-width:34em}
+
+.bar{display:flex;flex-direction:column;gap:8px}
+.track{display:flex;height:44px;border-radius:6px;overflow:hidden;gap:2px}
+.track span{display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:600;color:var(--bg);text-align:center;line-height:1.15;overflow:hidden}
+.track span:first-child{background:var(--seg1);color:var(--ink)}
+.track span:nth-child(2){background:var(--seg2);color:var(--ink)}
+.track span:nth-child(3){background:var(--seg3)}
+.track span:nth-child(4){background:var(--seg4)}
+.ticks{position:relative;height:1.4em;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.ticks span:first-child{transform:none}
+.ticks span:last-child{transform:translateX(-100%)}
+
+.cues{display:flex;flex-direction:column}
+.cue{display:grid;grid-template-columns:72px 1fr;gap:20px;padding-block:28px;border-top:1px solid var(--line)}
+.cue:last-child{border-bottom:1px solid var(--line)}
+.cue-no{display:flex;flex-direction:column;gap:2px}
+.cue-no b{font-family:var(--display);font-size:2rem;line-height:1;color:var(--pine)}
+.cue-no small{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.cue-body{display:flex;flex-direction:column;gap:14px;min-width:0}
+.cue-body>p{color:var(--muted)}
+ul.items{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.items li{padding-left:18px;position:relative}
+ul.items li::before{content:"";position:absolute;left:2px;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--pine)}
+ul.items b{font-weight:600}
+.q{display:flex;flex-wrap:wrap;gap:8px}
+.q span{background:var(--pine-soft);color:var(--ink);padding:6px 12px;border-radius:999px;font-size:.88rem}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:.9rem;display:flex;flex-direction:column;gap:6px}
+.note .label{font-size:.72rem;letter-spacing:.1em;color:var(--gold);font-weight:600}
+.note ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:4px}
+
+section.block{display:flex;flex-direction:column;gap:16px}
+.legend{font-size:.85rem;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+.legend .p{color:var(--pending)}
+.table{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;min-width:560px;font-size:.92rem}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr.mine td{background:var(--pine-soft)}
+th{font-size:.75rem;letter-spacing:.08em;color:var(--muted);font-weight:600}
+td.no{font-family:var(--display);font-weight:700;font-size:1.05rem;color:var(--pine);white-space:nowrap}
+td.lead b{display:block;font-weight:600}
+td.lead small{color:var(--muted)}
+.pend{color:var(--pending)}
+.self{font-weight:700;text-decoration:underline;text-decoration-color:var(--pine);text-underline-offset:3px}
+td.cnt{white-space:nowrap;font-variant-numeric:tabular-nums}
+td.cnt small{display:block;color:var(--muted)}
+
+.wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px}
+.wall figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.82rem;text-align:center}
+.wall figure .avatar{width:64px}
+.wall figcaption{line-height:1.3}
+.wall figcaption small{display:block;font-size:.72rem}
+.wall .s small{color:var(--singer)}
+.wall .b small{color:var(--band)}
+.empty{color:var(--muted);font-size:.9rem}
+footer{font-size:.85rem;color:var(--muted);text-align:center}
+
+@media (max-width:520px){
+  .cue{grid-template-columns:1fr;gap:12px}
+  .cue-no{flex-direction:row;align-items:baseline;gap:10px}
+  .track span{font-size:.7rem}
+  .maker{grid-template-columns:1fr}
+  .preview{position:static;margin:0 auto;width:110px}
+  .team-btn{padding:12px 10px;gap:8px}
+  .team-btn svg{width:28px;height:28px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .opt,.swatch,.team-btn{transition:border-color .15s,background .15s}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= 입장 화면 ================= -->
+<section class="login" id="login" hidden>
+  <form class="login-card" id="login-form" novalidate>
+    <div class="login-head">
+      <span class="eyebrow">2026 글로우 워십 연말 모임</span>
+      <h1 id="login-title">어서 오세요</h1>
+      <p>이름과 팀을 고르고, 오늘 함께할 내 캐릭터를 만들어 주세요.</p>
+    </div>
+
+    <p class="demo" id="demo-note" hidden>체험 모드예요. Supabase를 연결하기 전이라 이 기기에만 저장돼요.</p>
+
+    <div class="field">
+      <label class="field-label" for="name">이름</label>
+      <input type="text" id="name" maxlength="20" autocomplete="name" placeholder="예: 김에셀">
+    </div>
+
+    <div class="field">
+      <span class="field-label">팀</span>
+      <div class="team-pick" role="group" aria-label="팀 선택">
+        <button type="button" class="team-btn" data-team="싱어팀" aria-pressed="false">
+          <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><rect x="11" y="3" width="10" height="16" rx="5"/><path d="M7 14a9 9 0 0 0 18 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="14.8" y="23" width="2.4" height="5"/><rect x="10" y="27" width="12" height="2.4" rx="1.2"/></svg>
+          <span><b>싱어팀</b><small>노래로 섬겨요</small></span>
+        </button>
+        <button type="button" class="team-btn" data-team="악기팀" aria-pressed="false">
+          <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M24.5 3.5l4 4-2 1-7.6 7.6-2-2L24.5 6z"/><path d="M15.6 13.6l2.8 2.8c1.6 1.6 1.4 4.2-.4 5.6-.9.7-1.4 1.7-1.4 2.8 0 2.6-2.1 4.7-4.7 4.7-1.5 0-3-.6-4.1-1.7l-1.6-1.6C5.1 25.1 4.5 23.6 4.5 22.1c0-2.6 2.1-4.7 4.7-4.7 1.1 0 2.1-.5 2.8-1.4 1.4-1.8 4-2 5.6-.4z" opacity=".9"/><circle cx="11.5" cy="22.5" r="2" fill="var(--bg)"/></svg>
+          <span><b>악기팀</b><small>연주로 섬겨요</small></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">내 캐릭터<small>동물, 배경색, 소품을 골라요</small></span>
+      <div class="maker">
+        <div class="preview">
+          <div id="preview" style="width:100%"></div>
+          <button type="button" id="shuffle">랜덤으로 만들기</button>
+        </div>
+        <div class="maker-opts">
+          <div class="field" style="gap:6px"><span class="sub">동물</span><div class="opt-grid" id="opt-animal"></div></div>
+          <div class="field" style="gap:6px"><span class="sub">배경색</span><div class="swatches" id="opt-color"></div></div>
+          <div class="field" style="gap:6px"><span class="sub">소품</span><div class="opt-grid" id="opt-acc"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field" style="gap:6px">
+      <p class="error" id="error" role="alert"></p>
+      <button type="submit" class="submit" id="submit">입장하기</button>
+    </div>
+  </form>
+</section>
+
+<!-- ================= 안내 페이지 ================= -->
+<div class="wrap" id="app" hidden>
+  <div class="me">
+    <div class="me-ava" id="me-ava"></div>
+    <div class="me-text">
+      <b><span id="me-name"></span><span class="chip" id="me-team"></span></b>
+      <span id="me-group"></span>
+    </div>
+    <div class="me-actions">
+      <button type="button" class="ghost" id="edit">캐릭터 바꾸기</button>
+      <button type="button" class="ghost" id="logout">로그아웃</button>
+    </div>
+  </div>
+
+  <header>
+    <span class="eyebrow">2026 글로우 워십 연말 모임</span>
+    <h1>한 해를 돌아보며, 함께</h1>
+    <p class="lead">싱어팀과 악기팀이 함께 모여 올해를 나누는 시간이에요. 아이스브레이크부터 소그룹 나눔, 마무리 찬양까지 총 70분 동안 진행해요.</p>
+  </header>
+
+  <div class="bar" aria-label="전체 진행 시간 70분">
+    <div class="track">
+      <span style="flex:10">아이스<wbr>브레이크</span>
+      <span style="flex:20">전체모임</span>
+      <span style="flex:30">조별모임</span>
+      <span style="flex:10">마무리</span>
+    </div>
+    <div class="ticks"><span style="left:0">0</span><span style="left:14.286%">10분</span><span style="left:42.857%">30분</span><span style="left:85.714%">60분</span><span style="left:100%">70분</span></div>
+  </div>
+
+  <section class="cues" aria-label="순서">
+    <article class="cue">
+      <div class="cue-no"><b>1</b><small>10분</small></div>
+      <div class="cue-body">
+        <h2>아이스브레이크</h2>
+        <p>찬양팀답게 음악 게임으로 분위기를 열어요.</p>
+        <ul class="items">
+          <li><b>먼저, 리듬게임</b>: 다 같이 리듬게임으로 가볍게 몸과 마음을 풀고 마음껏 웃어봐요.</li>
+          <li><b>이어서, 허밍 릴레이</b>: 찬양 제목을 받은 사람이 허밍만으로 팀원들이 맞히게 해요.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="cue">
+      <div class="cue-no"><b>2</b><small>20분</small></div>
+      <div class="cue-body">
+        <h2>전체모임</h2>
+        <p>20명이 20분이면 한 사람당 1분 남짓이에요. 시간을 지키기 위해 이렇게 진행해요.</p>
+        <ul class="items">
+          <li><b>번호 뽑기</b>: 병 돌리기나 번호 뽑기로 7~8명만 질문에 답해요.</li>
+          <li><b>한 문장 답하기</b>: 또는 모두 같은 질문에 한 문장씩 빠르게 답하고, 재밌는 답이 나오면 조금 더 들어요.</li>
+        </ul>
+        <div class="q" aria-label="질문">
+          <span>올해 고마웠던 팀원과 그 이유</span>
+          <span>때려치우고 싶던 순간</span>
+        </div>
+        <div class="note">
+          <span class="label">진행자 참고</span>
+          <p>“때려치우고 싶던 순간”은 리더가 먼저 가볍고 유쾌하게 답해서 분위기를 잡아 주세요.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="cue">
+      <div class="cue-no"><b>3</b><small>30분</small></div>
+      <div class="cue-body">
+        <h2>조별모임</h2>
+        <p>4~6명 소그룹으로 나눠 한 사람당 6~7분씩 깊이 나눠요. 싱어와 악기를 섞어 서로의 고충을 이해하는 시간이 되도록 조를 짰어요.</p>
+        <div class="q" aria-label="나눔 질문">
+          <span>요즘 내 마음 상태</span>
+          <span>어떤 마음으로 섬기고 있는지</span>
+          <span>내년에 내가 해보고 싶은 것</span>
+          <span>팀이 이랬으면 좋겠다</span>
+        </div>
+        <div class="note">
+          <span class="label">조 진행자 참고</span>
+          <ul>
+            <li>질문 순서와 시간을 챙겨 주세요.</li>
+            <li>바라는 점 중심으로 이야기하도록 이끌어 주세요. 다른 파트에 대한 불만처럼 들리지 않게요.</li>
+            <li>구체적인 개선 의견은 마지막에 익명 쪽지로 따로 받아요.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="cue">
+      <div class="cue-no"><b>4</b><small>10분</small></div>
+      <div class="cue-body">
+        <h2>마무리</h2>
+        <p>다시 한자리에 모여 여운을 남기며 마쳐요.</p>
+        <ul class="items">
+          <li>함께 찬양 한 곡 부르기</li>
+          <li>소그룹별로 서로를 위해 짧게 기도하기</li>
+          <li>올해 사진과 영상으로 만든 짧은 슬라이드 보기</li>
+          <li>내년에 기대하는 것을 한 문장씩 적어 모아 두기. 내년 연말에 다시 열어봐요.</li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <section class="block">
+    <div>
+      <span class="eyebrow">조별모임</span>
+      <h2>조 편성</h2>
+    </div>
+    <div class="legend"><span>검정: 참석 확정</span><span class="p">파랑(*): 미응답</span></div>
+    <div class="table">
+      <table>
+        <thead><tr><th>조</th><th>진행자</th><th>멤버</th><th>인원</th></tr></thead>
+        <tbody id="groups"></tbody>
+      </table>
+    </div>
+    <p class="legend">인원은 진행자를 포함한 참석 확정 인원이에요. 아직 응답하지 않은 분은 참석 여부를 알려 주세요.</p>
+  </section>
+
+  <section class="block">
+    <div>
+      <span class="eyebrow">오늘의 캐릭터</span>
+      <h2>입장한 팀원</h2>
+    </div>
+    <p class="legend" id="wall-count"></p>
+    <div class="wall" id="wall"></div>
+  </section>
+
+  <footer>올 한 해 함께 섬겨 주셔서 고맙습니다.</footer>
+</div>
+
+<script>
+/* ===== Supabase 설정 =====
+   Supabase 대시보드 → Project Settings → API 에서 복사해 넣어요.
+   비워 두면 체험 모드(이 기기에만 저장)로 동작해요.
+   anon(public) 키만 넣으세요. service_role 키는 절대 넣으면 안 돼요. */
+const SUPABASE_URL = 'https://johocclndikpaszziykr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_GWyfhEQ9B5tWaIJwumXg1Q_zQIJvtwC';
+
+/* 주소 대신 프로젝트 ID만 넣어도 동작하도록 전체 주소로 바꿔요. */
+function fullUrl(u){
+  u = String(u || '').trim().replace(/\/+$/, '');
+  if (!u) return '';
+  return /^https?:\/\//.test(u) ? u : 'https://' + u + '.supabase.co';
+}
+let sb = null, sbError = '';
+if (SUPABASE_URL && SUPABASE_ANON_KEY){
+  if (!window.supabase) sbError = 'Supabase 연결 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.';
+  else {
+    try { sb = window.supabase.createClient(fullUrl(SUPABASE_URL), SUPABASE_ANON_KEY.trim()); }
+    catch(e){ sbError = 'Supabase 설정을 확인해 주세요. (' + e.message + ')'; }
+  }
+}
+
+/* ===== 조 편성 ===== [이름, 파트, 미응답 여부] */
+const GROUPS = [
+  {no:1, leader:'김에셀', role:'싱어 팀장', max:6, members:[['권도윤','베이스'],['김현규'],['장윤희'],['고성민',null,1],['조은혜','세컨 건반',1]]},
+  {no:2, leader:'박하람', role:'악기 팀장', max:6, members:[['최한길'],['도재욱'],['김진희'],['임보미'],['신석화','베이스',1]]},
+  {no:3, leader:'서승범', role:'인도자', max:6, members:[['김상미','바이올린'],['정문도'],['배윤미'],['손수현'],['홍준기','베이스',1]]},
+  {no:4, leader:'최재성', role:'인도자', max:5, members:[['김한준','일렉'],['유지인','건반'],['신정이'],['우새벽',null,1]]},
+  {no:5, leader:'신창빈', role:'인도자·드럼·베이스', max:5, members:[['심재현','고문'],['유명혜','세컨 건반'],['고은하'],['김수근','드럼·일렉',1]]},
+];
+
+/* ===== 캐릭터 ===== */
+const COLORS = {mint:'#cfeee0', sky:'#cfe3f7', peach:'#ffd9c2', lavender:'#e2d6f5', butter:'#fff0b3', rose:'#fbd3dc'};
+const COLOR_NAMES = {mint:'민트', sky:'하늘', peach:'복숭아', lavender:'라벤더', butter:'버터', rose:'로즈'};
+const ANIMALS = {
+  bear:{label:'곰',
+    back:'<circle cx="27" cy="33" r="11" fill="#a8714a"/><circle cx="73" cy="33" r="11" fill="#a8714a"/><circle cx="27" cy="33" r="6" fill="#e3b58e"/><circle cx="73" cy="33" r="6" fill="#e3b58e"/>',
+    face:'<circle cx="50" cy="57" r="30" fill="#b9805a"/><ellipse cx="50" cy="67" rx="12" ry="9" fill="#f0d3b4"/><ellipse cx="50" cy="63.5" rx="4" ry="3" fill="#3a2a22"/><path d="M46 69 Q50 72.5 54 69" stroke="#3a2a22" stroke-width="1.6" fill="none" stroke-linecap="round"/>'},
+  rabbit:{label:'토끼',
+    back:'<ellipse cx="38" cy="24" rx="7.5" ry="19" fill="#f4eee8"/><ellipse cx="62" cy="24" rx="7.5" ry="19" fill="#f4eee8"/><ellipse cx="38" cy="25" rx="3.6" ry="13" fill="#f6b8c4"/><ellipse cx="62" cy="25" rx="3.6" ry="13" fill="#f6b8c4"/>',
+    face:'<circle cx="50" cy="58" r="29" fill="#f4eee8"/><path d="M47 63 L53 63 L50 66 Z" fill="#e98aa0"/><path d="M50 66 Q47 70 44 68 M50 66 Q53 70 56 68" stroke="#6b5550" stroke-width="1.5" fill="none" stroke-linecap="round"/>'},
+  cat:{label:'고양이',
+    back:'<path d="M24 46 L28 18 L47 33 Z" fill="#e89a52"/><path d="M76 46 L72 18 L53 33 Z" fill="#e89a52"/><path d="M29 37 L31 25 L40 32 Z" fill="#f6c9a0"/><path d="M71 37 L69 25 L60 32 Z" fill="#f6c9a0"/>',
+    face:'<circle cx="50" cy="58" r="29" fill="#f0a45c"/><path d="M47.5 63 L52.5 63 L50 65.5 Z" fill="#8a4a2e"/><path d="M50 65.5 Q47 69 44 67 M50 65.5 Q53 69 56 67" stroke="#5a3424" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M21 60 L31 62 M21 66 L31 65 M79 60 L69 62 M79 66 L69 65" stroke="#8a4a2e" stroke-width="1.2" stroke-linecap="round"/>'},
+  dog:{label:'강아지', back:'',
+    face:'<circle cx="50" cy="57" r="29" fill="#efd3ad"/><ellipse cx="24" cy="50" rx="9" ry="17" fill="#a87148" transform="rotate(18 24 50)"/><ellipse cx="76" cy="50" rx="9" ry="17" fill="#a87148" transform="rotate(-18 76 50)"/><ellipse cx="50" cy="67" rx="11" ry="8" fill="#fbeedd"/><ellipse cx="50" cy="63" rx="4.5" ry="3.2" fill="#3a2a22"/><path d="M46 69 Q50 73 54 69" stroke="#3a2a22" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M48.5 71 Q50 76 51.5 71 Z" fill="#ef7d8c"/>'},
+  chick:{label:'병아리',
+    back:'<path d="M45 31 Q46 17 51 28 Q55 19 57 31 Z" fill="#ffc93d"/>',
+    face:'<circle cx="50" cy="58" r="29" fill="#ffd95a"/><path d="M44 63 L56 63 L50 70 Z" fill="#f39a2b"/><path d="M44 63 L56 63" stroke="#d9801c" stroke-width="1"/>'},
+  penguin:{label:'펭귄', back:'',
+    face:'<circle cx="50" cy="57" r="30" fill="#34404d"/><path d="M50 41 C31 41 26 62 34 76 C40 84 60 84 66 76 C74 62 69 41 50 41 Z" fill="#f8f6f2"/><path d="M45 62 L55 62 L50 68 Z" fill="#f2a23a"/>'},
+  fox:{label:'여우',
+    back:'<path d="M22 47 L26 15 L47 33 Z" fill="#e57a3c"/><path d="M78 47 L74 15 L53 33 Z" fill="#e57a3c"/><path d="M28 37 L29 23 L39 31 Z" fill="#fbe9dc"/><path d="M72 37 L71 23 L61 31 Z" fill="#fbe9dc"/>',
+    face:'<circle cx="50" cy="58" r="29" fill="#ea8545"/><path d="M22 58 Q36 60 50 77 Q64 60 78 58 Q76 82 50 87 Q24 82 22 58 Z" fill="#fff6ee"/><ellipse cx="50" cy="67" rx="3.6" ry="2.8" fill="#2a2320"/>'},
+  panda:{label:'판다', eye:'#ffffff',
+    back:'<circle cx="27" cy="33" r="11" fill="#2b2b2e"/><circle cx="73" cy="33" r="11" fill="#2b2b2e"/>',
+    face:'<circle cx="50" cy="57" r="30" fill="#fbfaf7"/><ellipse cx="38" cy="56" rx="7.5" ry="9.5" fill="#2b2b2e" transform="rotate(-20 38 56)"/><ellipse cx="62" cy="56" rx="7.5" ry="9.5" fill="#2b2b2e" transform="rotate(20 62 56)"/><ellipse cx="50" cy="65" rx="4" ry="3" fill="#2b2b2e"/><path d="M46 70 Q50 73 54 70" stroke="#2b2b2e" stroke-width="1.6" fill="none" stroke-linecap="round"/>'},
+};
+const ACCS = {
+  none:{label:'없음', svg:''},
+  mic:{label:'마이크', svg:'<g transform="rotate(-25 78 80)"><rect x="75" y="78" width="6" height="18" rx="3" fill="#4a4a52"/><circle cx="78" cy="75" r="7.5" fill="#c9ccd4"/><path d="M71.5 75 h13 M72.5 72 h11 M72.5 78 h11" stroke="#9aa0ab" stroke-width="1"/></g>'},
+  headphones:{label:'헤드폰', svg:'<path d="M20 58 Q20 21 50 21 Q80 21 80 58" stroke="#3b3f4a" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="13" y="49" width="12" height="19" rx="5" fill="#ef6f6c"/><rect x="75" y="49" width="12" height="19" rx="5" fill="#ef6f6c"/>'},
+  bow:{label:'리본', svg:'<g transform="translate(70 31) rotate(15)"><path d="M0 0 L-13 -8 L-13 8 Z" fill="#f2607a"/><path d="M0 0 L13 -8 L13 8 Z" fill="#f2607a"/><circle r="3.6" fill="#d9415f"/></g>'},
+  note:{label:'음표', svg:'<g fill="#3b3f4a"><ellipse cx="80" cy="25" rx="5" ry="3.8" transform="rotate(-20 80 25)"/><rect x="83.4" y="8" width="2.2" height="17"/><path d="M85.6 8 Q93 11 90.5 18 Q89 13.5 85.6 13.5 Z"/></g>'},
+  glasses:{label:'안경', svg:'<g fill="none" stroke="#2a2320" stroke-width="2"><circle cx="39" cy="55" r="7.5"/><circle cx="61" cy="55" r="7.5"/><path d="M46.5 55 h7"/></g>'},
+  crown:{label:'왕관', svg:'<path d="M36 31 L38 18 L44 25 L50 14 L56 25 L62 18 L64 31 Z" fill="#f5c542" stroke="#d9a520" stroke-width="1" stroke-linejoin="round"/>'},
+  santa:{label:'산타 모자', svg:'<path d="M24 38 Q34 10 62 14 Q78 18 82 34 L76 36 Q70 24 60 26 Q74 30 76 40 Z" fill="#e2453c"/><rect x="22" y="34" width="56" height="9" rx="4.5" fill="#fbfaf7"/><circle cx="80" cy="36" r="5" fill="#fbfaf7"/>'},
+};
+
+function cleanAvatar(a){
+  a = a || {};
+  return {
+    animal: ANIMALS[a.animal] ? a.animal : 'bear',
+    color: COLORS[a.color] ? a.color : 'mint',
+    acc: ACCS[a.acc] ? a.acc : 'none',
+  };
+}
+function avatarSVG(a, label){
+  a = cleanAvatar(a);
+  const A = ANIMALS[a.animal], eye = A.eye || '#2a2320';
+  const eyes = `<circle cx="39" cy="55" r="3.4" fill="${eye}"/><circle cx="61" cy="55" r="3.4" fill="${eye}"/>`
+    + (A.eye ? `<circle cx="39" cy="55" r="1.7" fill="#2a2320"/><circle cx="61" cy="55" r="1.7" fill="#2a2320"/>`
+             : `<circle cx="40.2" cy="53.8" r="1.2" fill="#fff"/><circle cx="62.2" cy="53.8" r="1.2" fill="#fff"/>`);
+  const cid = 'av' + (++avatarSVG.n);
+  const cheeks = '<ellipse cx="31" cy="64" rx="5" ry="3.2" fill="#ff8fa0" opacity=".55"/><ellipse cx="69" cy="64" rx="5" ry="3.2" fill="#ff8fa0" opacity=".55"/>';
+  return `<svg class="avatar" viewBox="0 0 100 100" role="img" aria-label="${esc(label || A.label + ' 캐릭터')}">`
+    + `<clipPath id="${cid}"><circle cx="50" cy="50" r="50"/></clipPath><g clip-path="url(#${cid})">`
+    + `<circle cx="50" cy="50" r="50" fill="${COLORS[a.color]}"/>${A.back}${A.face}${eyes}${cheeks}${ACCS[a.acc].svg}</g></svg>`;
+}
+avatarSVG.n = 0;
+function randomAvatar(){
+  const pick = o => { const k = Object.keys(o); return k[Math.floor(Math.random()*k.length)]; };
+  return {animal:pick(ANIMALS), color:pick(COLORS), acc:pick(ACCS)};
+}
+
+/* ===== 유틸 ===== */
+const $ = s => document.querySelector(s);
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const norm = s => String(s || '').replace(/\s+/g, '');
+const KEY = 'glow-yearend-user', LOCAL_LIST = 'glow-yearend-members';
+function store(k, v){ try{ v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+
+/* ===== 데이터 저장/불러오기 ===== */
+async function saveMember(u){
+  if (sb){
+    const { error } = await sb.from('members').upsert(
+      {name:u.name, team:u.team, avatar:u.avatar, updated_at:new Date().toISOString()}, {onConflict:'name'});
+    if (error) throw error;
+  } else {
+    const list = (load(LOCAL_LIST) || []).filter(m => norm(m.name) !== norm(u.name));
+    list.push(u); store(LOCAL_LIST, list);
+  }
+}
+async function loadMembers(){
+  if (sb){
+    const { data, error } = await sb.from('members').select('name,team,avatar').order('created_at');
+    if (error) throw error;
+    return data || [];
+  }
+  return load(LOCAL_LIST) || [];
+}
+
+/* ===== 입장 화면 ===== */
+let draft = {name:'', team:'', avatar:randomAvatar()};
+
+function renderMaker(){
+  $('#preview').innerHTML = avatarSVG(draft.avatar, '내 캐릭터 미리보기');
+  $('#opt-animal').innerHTML = Object.entries(ANIMALS).map(([k,A]) =>
+    `<button type="button" class="opt" data-animal="${k}" aria-pressed="${draft.avatar.animal===k}">${avatarSVG({animal:k,color:draft.avatar.color,acc:'none'}, A.label)}${A.label}</button>`).join('');
+  $('#opt-color').innerHTML = Object.entries(COLORS).map(([k,c]) =>
+    `<button type="button" class="swatch" data-color="${k}" style="background:${c}" aria-label="${COLOR_NAMES[k]}" aria-pressed="${draft.avatar.color===k}"></button>`).join('');
+  $('#opt-acc').innerHTML = Object.entries(ACCS).map(([k,X]) =>
+    `<button type="button" class="opt" data-acc="${k}" aria-pressed="${draft.avatar.acc===k}">${avatarSVG({...draft.avatar, acc:k}, X.label)}${X.label}</button>`).join('');
+  document.querySelectorAll('.team-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.team === draft.team));
+}
+
+function showLogin(editing){
+  $('#app').hidden = true; $('#login').hidden = false;
+  const note = $('#demo-note');
+  note.hidden = !!sb;
+  if (sbError) note.textContent = sbError;
+  $('#name').value = draft.name;
+  $('#login-title').textContent = editing ? '캐릭터 바꾸기' : '어서 오세요';
+  $('#submit').textContent = editing ? '저장하기' : '입장하기';
+  $('#error').textContent = '';
+  renderMaker();
+  window.scrollTo(0, 0);
+}
+
+$('#login').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.team){ draft.team = b.dataset.team; }
+  else if (b.dataset.animal){ draft.avatar.animal = b.dataset.animal; }
+  else if (b.dataset.color){ draft.avatar.color = b.dataset.color; }
+  else if (b.dataset.acc){ draft.avatar.acc = b.dataset.acc; }
+  else if (b.id === 'shuffle'){ draft.avatar = randomAvatar(); }
+  else return;
+  renderMaker();
+});
+$('#name').addEventListener('input', e => { draft.name = e.target.value; });
+
+$('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('#name').value.trim();
+  if (!name){ $('#error').textContent = '이름을 적어 주세요.'; $('#name').focus(); return; }
+  if (!draft.team){ $('#error').textContent = '싱어팀이나 악기팀을 골라 주세요.'; return; }
+  const user = {name, team:draft.team, avatar:cleanAvatar(draft.avatar)};
+  const btn = $('#submit'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = '저장하는 중…'; $('#error').textContent = '';
+  try{
+    await saveMember(user);
+    store(KEY, user);
+    showApp(user);
+  }catch(err){
+    $('#error').textContent = '저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요. (' + (err.message || err) + ')';
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+});
+
+/* ===== 안내 페이지 ===== */
+function findGroup(name){
+  const n = norm(name);
+  for (const g of GROUPS){
+    if (norm(g.leader) === n) return {g, leader:true};
+    if (g.members.some(m => norm(m[0]) === n)) return {g, leader:false};
+  }
+  return null;
+}
+
+function renderGroups(me){
+  const n = norm(me.name), mine = findGroup(me.name);
+  $('#groups').innerHTML = GROUPS.map(g => {
+    const count = 1 + g.members.filter(m => !m[2]).length;
+    const mem = g.members.map(([nm, part, pend]) => {
+      const t = esc(nm + (part ? `(${part})` : ''));
+      const cls = [pend ? 'pend' : '', norm(nm) === n ? 'self' : ''].join(' ').trim();
+      return cls ? `<span class="${cls}">${pend ? '*' : ''}${t}</span>` : t;
+    }).join(', ');
+    const leaderCls = norm(g.leader) === n ? ' class="self"' : '';
+    return `<tr${mine && mine.g === g ? ' class="mine"' : ''}><td class="no">${g.no}조</td>`
+      + `<td class="lead"><b${leaderCls}>${esc(g.leader)}</b><small>${esc(g.role)}</small></td>`
+      + `<td>${mem}</td><td class="cnt">${count}명<small>최대 ${g.max}명</small></td></tr>`;
+  }).join('');
+  return mine;
+}
+
+async function renderWall(){
+  const wall = $('#wall');
+  wall.innerHTML = '<p class="empty">팀원을 불러오는 중이에요…</p>';
+  try{
+    const list = await loadMembers();
+    const s = list.filter(m => m.team === '싱어팀').length, b = list.filter(m => m.team === '악기팀').length;
+    $('#wall-count').textContent = `지금까지 ${list.length}명 입장 · 싱어팀 ${s}명 · 악기팀 ${b}명`;
+    wall.innerHTML = list.length ? list.map(m =>
+      `<figure class="${m.team === '악기팀' ? 'b' : 's'}">${avatarSVG(m.avatar, m.name + ' 캐릭터')}<figcaption>${esc(m.name)}<small>${esc(m.team)}</small></figcaption></figure>`
+    ).join('') : '<p class="empty">아직 입장한 팀원이 없어요.</p>';
+  }catch(err){
+    $('#wall-count').textContent = '';
+    wall.innerHTML = '<p class="empty">팀원 목록을 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.</p>';
+  }
+}
+
+function showApp(me){
+  $('#login').hidden = true; $('#app').hidden = false;
+  $('#me-ava').innerHTML = avatarSVG(me.avatar, '내 캐릭터');
+  $('#me-name').textContent = me.name;
+  const chip = $('#me-team');
+  chip.textContent = me.team; chip.className = 'chip ' + (me.team === '악기팀' ? 'b' : 's');
+  const mine = renderGroups(me);
+  $('#me-group').textContent = mine
+    ? (mine.leader ? `${mine.g.no}조 진행을 맡아 주셨어요.` : `${mine.g.no}조예요 · 진행자 ${mine.g.leader}`)
+    : '조 편성에서 이름을 찾지 못했어요. 진행자에게 알려 주세요.';
+  renderWall();
+  window.scrollTo(0, 0);
+}
+
+$('#edit').addEventListener('click', () => {
+  const me = load(KEY); if (!me) return;
+  draft = {name:me.name, team:me.team, avatar:cleanAvatar(me.avatar)};
+  showLogin(true);
+});
+$('#logout').addEventListener('click', () => {
+  store(KEY, null);
+  draft = {name:'', team:'', avatar:randomAvatar()};
+  showLogin(false);
+});
+
+/* ===== 시작 ===== */
+const saved = load(KEY);
+if (saved && saved.name && saved.team){ saved.avatar = cleanAvatar(saved.avatar); showApp(saved); }
+else showLogin(false);
+</script>
+</body>
+</html>
